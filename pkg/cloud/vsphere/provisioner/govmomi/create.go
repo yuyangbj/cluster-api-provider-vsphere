@@ -346,6 +346,22 @@ func (pv *Provisioner) cloneVirtualMachine(s *SessionContext, cluster *clusterv1
 		deviceSpecs = append(deviceSpecs, nicspec)
 		nicid--
 	}
+
+	for _, pcidevice := range machineConfig.MachineSpec.PCIDevices {
+		klog.V(3).Infof("start to set PCI device")
+		pci := types.VirtualPCIPassthrough{}
+		deviceinfo := types.Description{}
+		deviceinfo.Label = "PCI device 0"
+		deviceinfo.Summary = "NVIDIA GRID vGPU " + pcidevice.VGPU
+		vgpu := types.VirtualPCIPassthroughVmiopBackingInfo{}
+		vgpu.Vgpu = pcidevice.VGPU
+		pci.Backing = &vgpu
+
+		vgpuspec := &types.VirtualDeviceConfigSpec{}
+		vgpuspec.Operation  = types.VirtualDeviceConfigSpecOperationAdd
+		vgpuspec.Device = &pci
+		deviceSpecs = append(deviceSpecs, vgpuspec)
+	}
 	spec.Config.DeviceChange = deviceSpecs
 	if pv.eventRecorder != nil { // TODO: currently supporting nil for testing
 		pv.eventRecorder.Eventf(machine, corev1.EventTypeNormal, "Creating", "Creating Machine %v", machine.Name)
